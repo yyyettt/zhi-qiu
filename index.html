@@ -41,7 +41,6 @@
         <button class="tab is-active" data-section="journal"><span>日记</span><small id="count-journal">0</small></button>
         <button class="tab" data-section="memo"><span>备忘</span><small id="count-memo">0</small></button>
         <button class="tab" data-section="quote"><span>摘录</span><small id="count-quote">0</small></button>
-        <button class="tab" data-section="word"><span>单词</span><small id="count-word">0</small></button>
         <button class="tab" data-section="focus"><span>专注</span><small id="count-focus">0</small></button>
       </nav>
 
@@ -139,7 +138,7 @@
         </div>
         <div class="quote-fields" id="quoteFields" hidden>
           <label class="field-label">图片文字识别 <span>可选</span></label>
-          <div class="quote-ocr-tools"><label class="quote-image-upload"><input id="quoteImage" type="file" accept="image/*" hidden /><span>上传图片</span></label><button type="button" class="secondary-button" id="ocrButton" disabled>识别图片文字</button></div>
+          <div class="quote-ocr-tools"><label class="quote-image-upload"><input id="quoteImage" type="file" accept="image/*" hidden /><span>上传图片</span></label><button type="button" class="secondary-button" id="ocrButton" disabled>识别图片文字</button><button type="button" class="text-button ocr-retry-button" id="ocrRetryButton" hidden>重新加载识别</button></div>
           <img class="quote-image-preview" id="quoteImagePreview" alt="摘录图片预览" hidden />
           <p class="ocr-status" id="ocrStatus" hidden></p>
           <div id="quoteSourceField">
@@ -173,7 +172,6 @@
       </div>
       <div class="book-print-area" id="bookPrintArea" aria-hidden="true"></div>
     </section>
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
