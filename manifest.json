@@ -1,0 +1,11 @@
+{
+  "name": "知秋",
+  "short_name": "知秋",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f5eee8",
+  "theme_color": "#f5eee8",
+  "lang": "zh-CN",
+  "description": "日记、备忘与摘录的暖调粉绿个人工作台。",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
