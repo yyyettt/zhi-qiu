@@ -34,11 +34,11 @@ h1 { margin-bottom: 0; font-size: clamp(26px, 6vw, 36px); letter-spacing: -.04em
 
 .welcome-card { position: relative; overflow: hidden; min-height: 184px; padding: 28px; display: flex; justify-content: space-between; align-items: flex-end; border: 1px solid rgba(226, 214, 205, .78); border-radius: 26px; background: linear-gradient(135deg, #e6f0e3, #f6e8e2 77%); box-shadow: var(--shadow); }
 .date-label { margin-bottom: 18px; color: var(--sage-deep); font-size: 12px; letter-spacing: .08em; }
-.welcome-card h2 { max-width: 250px; margin-bottom: 10px; font-size: clamp(24px, 6vw, 32px); line-height: 1.2; letter-spacing: -.04em; font-weight: 600; }
+.welcome-card h2 { max-width: none; margin-bottom: 10px; white-space: nowrap; font-size: clamp(21px, 5vw, 32px); line-height: 1.2; letter-spacing: -.05em; font-weight: 600; }
 .muted { margin-bottom: 0; color: var(--muted); font-size: 13px; }
 .orb { width: 110px; height: 110px; margin: 0 -12px -8px 16px; border-radius: 50% 45% 52% 48%; background: radial-gradient(circle at 34% 30%, #f3d9d3, #c4d8bd 65%, #a9c19f); opacity: .78; transform: rotate(18deg); }
 
-.section-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 22px 0 30px; padding: 5px; border: 1px solid var(--line); border-radius: 18px; background: rgba(251, 250, 247, .7); }
+.section-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 22px 0 30px; padding: 5px; border: 1px solid var(--line); border-radius: 18px; background: rgba(251, 250, 247, .7); }
 .tab { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 8px; color: var(--muted); background: transparent; border: 0; border-radius: 13px; font-size: 14px; transition: .2s ease; }
 .tab small { min-width: 20px; padding: 2px 5px; border-radius: 999px; background: #eeece6; font-size: 10px; }
 .tab.is-active { color: var(--ink); background: #ebece5; box-shadow: 0 4px 14px rgba(75, 83, 73, .06); }
@@ -193,6 +193,8 @@ h1 { margin-bottom: 0; font-size: clamp(26px, 6vw, 36px); letter-spacing: -.04em
 .quote-image-upload { display: inline-flex; align-items: center; padding: 10px 12px; color: var(--sage-deep); background: #edf3e7; border-radius: 11px; font-size: 12px; cursor: pointer; }
 .quote-image-preview { display: block; width: min(100%, 250px); max-height: 170px; margin-bottom: 10px; object-fit: cover; border-radius: 11px; border: 1px solid var(--line); }
 .ocr-status { margin: 0 0 12px; color: var(--sage-deep); font-size: 11px; }
+.ocr-status.is-error { color: #a96f68; }
+.ocr-retry-button { white-space: nowrap; }
 
 .book-modal { position: fixed; z-index: 12; left: 50%; top: 50%; width: min(94vw, 680px); max-height: 92vh; padding: 22px; overflow: auto; border: 1px solid var(--line); border-radius: 24px; background: var(--surface); box-shadow: 0 24px 70px rgba(74, 57, 50, .18); transform: translate(-50%, -50%); animation: rise .25s ease; }
 .book-modal-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px; }
@@ -221,7 +223,7 @@ h1 { margin-bottom: 0; font-size: clamp(26px, 6vw, 36px); letter-spacing: -.04em
 @media (min-width: 720px) { .app-shell { padding-top: 42px; } .entry-modal { bottom: 24px; border-radius: 25px; } }
 @media (max-width: 430px) { .topbar { align-items: flex-start; } .top-actions { max-width: 165px; } .icon-button { padding: 8px 9px; } .icon-button span:not(.install-glyph) { display: none; } }
 @media (max-width: 520px) { .section-actions { gap: 5px; } .section-actions .secondary-button { padding: 10px 9px; font-size: 11px; } .book-modal { width: 94vw; padding: 17px; } .book-page { min-height: 320px; padding: 25px 21px; } .book-viewer { min-height: 330px; } }
-@media (max-width: 520px) { .outfit-fields { grid-template-columns: 1fr; gap: 8px; } .focus-orbit { width: 196px; height: 196px; } .section-tabs { gap: 5px; } .tab { padding-inline: 4px; font-size: 12px; } }
+@media (max-width: 520px) { .outfit-fields { grid-template-columns: 1fr; gap: 8px; } .focus-orbit { width: 196px; height: 196px; } .section-tabs { gap: 4px; } .tab { gap: 3px; padding-inline: 2px; font-size: 12px; } .tab small { min-width: 16px; padding-inline: 3px; } .welcome-card > div:first-child { min-width: 0; flex: 1; } .welcome-card h2 { font-size: 17px; } .welcome-card .orb { flex: 0 0 86px; width: 86px; height: 86px; margin-left: 8px; } }
 @media (max-width: 520px) { .weather-card { grid-template-columns: 30px 1fr; } .weather-side { grid-column: 2; } .wardrobe-add { grid-template-columns: 1fr 92px; } .wardrobe-add .primary-button { grid-column: 1 / -1; } }
 @media print {
   body { background: #fff; }
