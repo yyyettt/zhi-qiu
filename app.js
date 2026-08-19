@@ -7,7 +7,6 @@ const sectionMeta = {
   journal: { label: "JOURNAL", title: "日记", modal: "写一篇日记", placeholder: "写下今天的心情、观察或片段……" },
   memo: { label: "MEMO", title: "备忘", modal: "记一件待办", placeholder: "记录一个想法、提醒或待办……" },
   quote: { label: "EXCERPT", title: "摘录", modal: "收藏一段摘录", placeholder: "粘贴或写下让你停留的一句话……" },
-  word: { label: "WORDS", title: "单词", modal: "收录一个单词", placeholder: "写下释义、例句或联想……" },
   focus: { label: "FOCUS", title: "专注", modal: "", placeholder: "" }
 };
 
@@ -37,8 +36,12 @@ let bookPageIndex = 0;
 let focusMinutes = 25;
 let focusRemaining = 25 * 60;
 let focusTimerId = null;
+let focusTimerRunning = false;
+let focusEndAt = 0;
 let focusSessions = Number(localStorage.getItem("quiet-desk-focus-sessions") || 0);
 let quoteImageData = "";
+let tesseractLoadPromise = null;
+let tesseractAssetBase = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist";
 
 const $ = (selector) => document.querySelector(selector);
 const entryList = $("#entryList");
@@ -183,16 +186,17 @@ function applyFormMode(entry = null) {
   $("#moodField").hidden = !isJournal;
   $("#entryBody").required = !is321;
   $("#entryDate").required = is321;
-  $("#titleLabel").innerHTML = activeSection === "word" ? "单词 <span>必填</span>" : "标题 <span>可选</span>";
-  $("#bodyLabel").textContent = activeSection === "word" ? "释义 / 例句" : activeSection === "quote" ? "摘录内容" : "内容";
-  $("#entryTitle").required = activeSection === "word";
-  $("#entryTitle").placeholder = activeSection === "word" ? "例如：serendipity" : "给这段记录一个名字";
+  $("#titleLabel").innerHTML = "标题 <span>可选</span>";
+  $("#bodyLabel").textContent = activeSection === "quote" ? "摘录内容" : "内容";
+  $("#entryTitle").required = false;
+  $("#entryTitle").placeholder = "给这段记录一个名字";
   $("#entryDate").value = entry?.entryDate || todayISO();
   quoteImageData = entry?.imageData || "";
   $("#quoteImagePreview").src = quoteImageData;
   $("#quoteImagePreview").hidden = !quoteImageData;
   $("#ocrButton").disabled = !quoteImageData;
   $("#ocrStatus").hidden = true;
+  $("#ocrRetryButton").hidden = true;
   renderMoodPicker();
   if (entry) {
     $("#entryTitle").value = entry.title || "";
@@ -288,38 +292,118 @@ function renderFocusTimer() {
   const minutes = String(Math.floor(focusRemaining / 60)).padStart(2, "0");
   const seconds = String(focusRemaining % 60).padStart(2, "0");
   $("#focusTime").textContent = `${minutes}:${seconds}`;
-  $("#focusLabel").textContent = focusTimerId ? "正在专注" : (focusRemaining === focusMinutes * 60 ? "准备开始" : "已暂停");
-  $("#focusStart").textContent = focusTimerId ? "暂停专注" : "开始专注";
+  $("#focusLabel").textContent = focusTimerRunning ? "正在专注" : (focusRemaining === focusMinutes * 60 ? "准备开始" : "已暂停");
+  $("#focusStart").textContent = focusTimerRunning ? "暂停专注" : "开始专注";
 }
-function setFocusMinutes(minutes) { if (focusTimerId) return; focusMinutes = minutes; focusRemaining = minutes * 60; renderFocusTimer(); }
-function toggleFocus() {
-  if (focusTimerId) { clearInterval(focusTimerId); focusTimerId = null; renderFocusTimer(); return; }
-  focusTimerId = setInterval(() => {
-    focusRemaining -= 1;
-    if (focusRemaining <= 0) { clearInterval(focusTimerId); focusTimerId = null; focusRemaining = 0; focusSessions += 1; localStorage.setItem("quiet-desk-focus-sessions", String(focusSessions)); alert("专注完成，辛苦了。"); render(); }
+function stopFocusTimer() {
+  if (focusTimerId !== null) window.clearInterval(focusTimerId);
+  focusTimerId = null;
+  focusTimerRunning = false;
+  focusEndAt = 0;
+}
+function tickFocusTimer() {
+  if (!focusTimerRunning) return;
+  focusRemaining = Math.max(0, Math.ceil((focusEndAt - Date.now()) / 1000));
+  if (focusRemaining <= 0) {
+    stopFocusTimer();
+    focusSessions += 1;
+    localStorage.setItem("quiet-desk-focus-sessions", String(focusSessions));
     renderFocusTimer();
-  }, 1000);
+    render();
+    alert("专注完成，辛苦了。");
+    return;
+  }
   renderFocusTimer();
 }
+function setFocusMinutes(minutes) { if (focusTimerRunning) return; focusMinutes = minutes; focusRemaining = minutes * 60; renderFocusTimer(); }
+function toggleFocus() {
+  if (focusTimerRunning) { focusRemaining = Math.max(0, Math.ceil((focusEndAt - Date.now()) / 1000)); stopFocusTimer(); renderFocusTimer(); return; }
+  focusTimerRunning = true;
+  focusEndAt = Date.now() + focusRemaining * 1000;
+  focusTimerId = window.setInterval(tickFocusTimer, 250);
+  tickFocusTimer();
+}
 $(".focus-preset").forEach((button) => button.addEventListener("click", () => { $(".focus-preset").forEach((item) => item.classList.remove("is-active")); button.classList.add("is-active"); setFocusMinutes(Number(button.dataset.minutes)); }));
-$("#focusStart").addEventListener("click", toggleFocus);
-$("#focusReset").addEventListener("click", () => { if (focusTimerId) clearInterval(focusTimerId); focusTimerId = null; focusRemaining = focusMinutes * 60; renderFocusTimer(); });
+let lastFocusPointerAt = 0;
+function handleFocusStart(event) { if (event.type === "pointerup") { lastFocusPointerAt = Date.now(); toggleFocus(); return; } if (Date.now() - lastFocusPointerAt < 500) return; toggleFocus(); }
+$("#focusStart").addEventListener("pointerup", handleFocusStart);
+$("#focusStart").addEventListener("click", handleFocusStart);
+$("#focusReset").addEventListener("click", () => { stopFocusTimer(); focusRemaining = focusMinutes * 60; renderFocusTimer(); });
+document.addEventListener("visibilitychange", () => { if (!document.hidden) tickFocusTimer(); });
+
+function setOcrStatus(message, { error = false } = {}) {
+  const status = $("#ocrStatus");
+  status.textContent = message;
+  status.hidden = !message;
+  status.classList.toggle("is-error", error);
+}
+
+function loadTesseractScript(url, assetBase) {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = url;
+    script.onload = () => { if (!window.Tesseract) return reject(new Error("engine-unavailable")); tesseractAssetBase = assetBase; resolve(window.Tesseract); };
+    script.onerror = () => reject(new Error("script-load-failed"));
+    document.head.appendChild(script);
+  });
+}
+
+async function ensureTesseract() {
+  if (window.Tesseract) return window.Tesseract;
+  if (!tesseractLoadPromise) {
+    tesseractLoadPromise = loadTesseractScript("https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js", "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist")
+      .catch(() => loadTesseractScript("https://unpkg.com/tesseract.js@5/dist/tesseract.min.js", "https://unpkg.com/tesseract.js@5/dist"));
+  }
+  const engine = await tesseractLoadPromise;
+  if (!engine) throw new Error("engine-unavailable");
+  return engine;
+}
 
 $("#quoteImage").addEventListener("change", async (event) => {
   const file = event.target.files?.[0]; if (!file) return;
   quoteImageData = await new Promise((resolve) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.readAsDataURL(file); });
-  $("#quoteImagePreview").src = quoteImageData; $("#quoteImagePreview").hidden = false; $("#ocrButton").disabled = false; $("#ocrStatus").hidden = true;
+  $("#quoteImagePreview").src = quoteImageData; $("#quoteImagePreview").hidden = false; $("#ocrButton").disabled = false; $("#ocrRetryButton").hidden = true;
+  setOcrStatus("图片已上传，点击“识别图片文字”开始识别。", {});
 });
 $("#ocrButton").addEventListener("click", async () => {
   if (!quoteImageData) return;
   const status = $("#ocrStatus"); const button = $("#ocrButton");
-  if (!window.Tesseract) { status.textContent = "识别引擎尚未加载，请确认网络后重试。"; status.hidden = false; return; }
-  button.disabled = true; status.hidden = false; status.textContent = "正在识别图片文字……";
+  button.disabled = true; $("#ocrRetryButton").hidden = true;
+  setOcrStatus("正在加载识别引擎和中文识别包，请稍候……");
   try {
-    const result = await window.Tesseract.recognize(quoteImageData, "chi_sim+eng", { logger: (message) => { if (message.status === "recognizing text" && message.progress) status.textContent = `正在识别图片文字 ${Math.round(message.progress * 100)}%`; } });
-    $("#entryBody").value = result.data.text.trim(); status.textContent = result.data.text.trim() ? "识别完成，文字已填入内容框。" : "没有识别到清晰文字，可以手动输入。";
-  } catch { status.textContent = "识别失败，请换一张更清晰的图片。"; }
+    const engine = await ensureTesseract();
+    const workerOptions = {
+      workerPath: `${tesseractAssetBase}/worker.min.js`,
+      corePath: tesseractAssetBase.includes("unpkg.com") ? "https://unpkg.com/tesseract.js-core@5/tesseract-core.wasm.js" : "https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core.wasm.js",
+      logger: (message) => {
+        if (message.status === "loading language traineddata") setOcrStatus("正在加载中文识别包……");
+        else if (message.status === "recognizing text" && message.progress) setOcrStatus(`正在识别图片文字 ${Math.round(message.progress * 100)}%`);
+      }
+    };
+    let result;
+    let lastError;
+    for (const langPath of ["https://tessdata.projectnaptha.com/4.0.0", "https://cdn.jsdelivr.net/gh/tesseract-ocr/tessdata_fast@main"]) {
+      try {
+        result = await engine.recognize(quoteImageData, "chi_sim+eng", { ...workerOptions, langPath });
+        break;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    if (!result) throw lastError || new Error("ocr-failed");
+    const text = result?.data?.text?.trim() || "";
+    $("#entryBody").value = text;
+    setOcrStatus(text ? "识别完成，文字已填入内容框。" : "没有识别到清晰文字，可以手动输入。", { error: !text });
+  } catch (error) {
+    console.error("OCR failed", error);
+    setOcrStatus("识别引擎加载失败。请保持网络畅通后点击“重新加载识别”。", { error: true });
+    $("#ocrRetryButton").hidden = false;
+  }
   button.disabled = false;
+});
+$("#ocrRetryButton").addEventListener("click", () => {
+  tesseractLoadPromise = null;
+  $("#ocrButton").click();
 });
 
 $("#exportButton").addEventListener("click", () => {
@@ -342,4 +426,4 @@ document.addEventListener("visibilitychange", () => { if (document.visibilitySta
 window.addEventListener("beforeinstallprompt", (event) => { event.preventDefault(); deferredInstallPrompt = event; $("#installButton").hidden = false; });
 $("#installButton").addEventListener("click", async () => { if (!deferredInstallPrompt) return; deferredInstallPrompt.prompt(); await deferredInstallPrompt.userChoice; deferredInstallPrompt = null; $("#installButton").hidden = true; });
 window.addEventListener("appinstalled", () => { $("#installButton").hidden = true; });
-if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("sw.js"));
+if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("sw.js?v=18"));
