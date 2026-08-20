@@ -245,6 +245,15 @@ function renderBook() {
 }
 function openBook() { $("#bookMonth").value = monthISO(); bookPageIndex = 0; renderBook(); bookModal.hidden = false; backdrop.hidden = false; }
 function closeBook() { bookModal.hidden = true; backdrop.hidden = true; }
+function downloadBook() {
+  const month = $("#bookMonth").value || monthISO();
+  const pages = notebookPages(month).join("");
+  const html = `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>知秋-${formatMonth(month)}日记本</title><style>body{margin:0;background:#fffaf7;color:#4c403e;font-family:Arial,"Microsoft YaHei",sans-serif}.book-page{min-height:90vh;padding:12vw 10vw;box-sizing:border-box;border-bottom:1px solid #e9ddd5;page-break-after:always}.book-cover{text-align:center}.book-cover-mark{font-size:38px;margin:20vh 0 12px}.section-kicker{color:#9b8e88;font-size:11px;letter-spacing:.18em}.book-page-date{color:#718c76;font-size:12px;margin-bottom:22px}.book-page h3{font-size:24px}.book-body{white-space:pre-wrap;line-height:2}.entry-321{line-height:1.9}.entry-format-group{display:flex;gap:14px;margin:18px 0}.entry-format-number{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#dfe7dd;color:#718c76}.entry-format-group p{margin:4px 0}</style></head><body>${pages}</body></html>`;
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a"); link.href = url; link.download = `知秋-${month}-日记本.html`; document.body.appendChild(link); link.click(); link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 
 document.querySelectorAll(".tab").forEach((tab) => tab.addEventListener("click", () => { activeSection = tab.dataset.section; searchInput.value = ""; render(); }));
 document.querySelectorAll(".journal-mode").forEach((tab) => tab.addEventListener("click", () => { activeJournalType = tab.dataset.journalType; searchInput.value = ""; render(); }));
@@ -286,7 +295,8 @@ $("#closeBook").addEventListener("click", closeBook);
 $("#bookMonth").addEventListener("change", () => { bookPageIndex = 0; renderBook(); });
 $("#bookPrev").addEventListener("click", () => { if (bookPageIndex > 0) { bookPageIndex -= 1; renderBook(); } });
 $("#bookNext").addEventListener("click", () => { if (bookPageIndex < bookPages.length - 1) { bookPageIndex += 1; renderBook(); } });
-$("#bookPrint").addEventListener("click", () => { renderBook(); window.print(); });
+$("#bookPrint").addEventListener("click", () => { renderBook(); setTimeout(() => window.print(), 80); });
+$("#bookDownload").addEventListener("click", downloadBook);
 
 function renderFocusTimer() {
   const minutes = String(Math.floor(focusRemaining / 60)).padStart(2, "0");
@@ -320,14 +330,11 @@ function toggleFocus() {
   if (focusTimerRunning) { focusRemaining = Math.max(0, Math.ceil((focusEndAt - Date.now()) / 1000)); stopFocusTimer(); renderFocusTimer(); return; }
   focusTimerRunning = true;
   focusEndAt = Date.now() + focusRemaining * 1000;
-  focusTimerId = window.setInterval(tickFocusTimer, 250);
+  focusTimerId = window.setInterval(tickFocusTimer, 1000);
   tickFocusTimer();
 }
 $(".focus-preset").forEach((button) => button.addEventListener("click", () => { $(".focus-preset").forEach((item) => item.classList.remove("is-active")); button.classList.add("is-active"); setFocusMinutes(Number(button.dataset.minutes)); }));
-let lastFocusPointerAt = 0;
-function handleFocusStart(event) { if (event.type === "pointerup") { lastFocusPointerAt = Date.now(); toggleFocus(); return; } if (Date.now() - lastFocusPointerAt < 500) return; toggleFocus(); }
-$("#focusStart").addEventListener("pointerup", handleFocusStart);
-$("#focusStart").addEventListener("click", handleFocusStart);
+$("#focusStart").addEventListener("click", toggleFocus);
 $("#focusReset").addEventListener("click", () => { stopFocusTimer(); focusRemaining = focusMinutes * 60; renderFocusTimer(); });
 document.addEventListener("visibilitychange", () => { if (!document.hidden) tickFocusTimer(); });
 
@@ -426,4 +433,4 @@ document.addEventListener("visibilitychange", () => { if (document.visibilitySta
 window.addEventListener("beforeinstallprompt", (event) => { event.preventDefault(); deferredInstallPrompt = event; $("#installButton").hidden = false; });
 $("#installButton").addEventListener("click", async () => { if (!deferredInstallPrompt) return; deferredInstallPrompt.prompt(); await deferredInstallPrompt.userChoice; deferredInstallPrompt = null; $("#installButton").hidden = true; });
 window.addEventListener("appinstalled", () => { $("#installButton").hidden = true; });
-if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("sw.js?v=18"));
+if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("sw.js?v=20"));
